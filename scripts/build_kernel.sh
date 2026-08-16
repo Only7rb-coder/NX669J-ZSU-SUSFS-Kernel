@@ -74,12 +74,13 @@ fi
 # slightly from the upstream SUSFS reference tree.
 PATCH_LOG="$OUT_DIR/susfs-patch.log"
 rm -f "$PATCH_LOG"
-if ! patch --dry-run --batch --forward --fuzz=3 -p1 < "$PATCH_FILE" >"$PATCH_LOG" 2>&1; then
+PATCH_STATUS=0
+patch --batch --forward --fuzz=3 -p1 < "$PATCH_FILE" >"$PATCH_LOG" 2>&1 || PATCH_STATUS=$?
+if [[ "$PATCH_STATUS" -ne 0 && "${SUSFS_NEEDS_FD_PORT:-false}" != true ]]; then
   cat "$PATCH_LOG" >&2
   echo "SUSFS kernel-5.4 patch cannot be applied to this source" >&2
   exit 1
 fi
-patch --batch --forward --fuzz=3 -p1 < "$PATCH_FILE" >>"$PATCH_LOG" 2>&1
 
 # This source tree has a different fs/proc/fd.c body than the SUSFS reference
 # tree. Port the one rejected hunk explicitly and keep the port reviewable.
@@ -154,11 +155,11 @@ if [[ -x build/build.sh && -f common/build.config.gki.aarch64 ]]; then
   IMAGE="$(find "$KERNEL_DIR/out" -type f -path '*/dist/Image' -print -quit)"
 else
   echo "Using direct make fallback for the single-repository NX669J 5.4.147 source clone."
-  make O="$OUT_DIR" ARCH="$ARCH" LLVM=1 LLVM_IAS=1 \
+  make O="$OUT_DIR" ARCH="$ARCH" LLVM=1 LLVM_IAS=1 LTO=thin \
     CROSS_COMPILE="$CROSS_COMPILE" CROSS_COMPILE_COMPAT="${CROSS_COMPILE_COMPAT:-arm-linux-gnueabihf-}" \
     "$KERNEL_DEFCONFIG"
 
-  make O="$OUT_DIR" ARCH="$ARCH" LLVM=1 LLVM_IAS=1 \
+  make O="$OUT_DIR" ARCH="$ARCH" LLVM=1 LLVM_IAS=1 LTO=thin \
     CROSS_COMPILE="$CROSS_COMPILE" CROSS_COMPILE_COMPAT="${CROSS_COMPILE_COMPAT:-arm-linux-gnueabihf-}" \
     -j"${JOBS:-$(nproc)}" Image modules
   IMAGE="$OUT_DIR/arch/arm64/boot/Image"
