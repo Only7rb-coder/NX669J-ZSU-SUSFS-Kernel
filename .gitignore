@@ -12,3 +12,4 @@ artifacts/
 *.o
 *.cmd
 *.tmp
+ci-logs/

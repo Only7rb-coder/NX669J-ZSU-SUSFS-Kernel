@@ -63,23 +63,48 @@ fi
 
 git clone --depth 1 --branch "$SUSFS_REF" "$SUSFS_REPO" "$ROOT_DIR/deps/susfs4ksu"
 SUSFS_DIR="$ROOT_DIR/deps/susfs4ksu"
-PATCH_FILE="$SUSFS_DIR/kernel_patches/50_add_susfs_in_gki-android12-5.10.patch"
+PATCH_FILE="$SUSFS_DIR/${SUSFS_PATCH:-kernel_patches/50_add_susfs_in_kernel-5.4.patch}"
 if [[ ! -f "$PATCH_FILE" ]]; then
   echo "Missing SUSFS patch $PATCH_FILE" >&2
   exit 1
 fi
 
-# Apply the Android 12/5.10 patch once, then add the SUSFS source/header files.
-if ! patch -p1 --dry-run < "$PATCH_FILE" >/dev/null 2>&1; then
-  if ! grep -q 'CONFIG_KSU_SUSFS' fs/Makefile; then
-    echo "SUSFS patch does not apply and no existing SUSFS marker was found" >&2
+# Apply the kernel-5.4 patch with a bounded fuzz level. The NX669J vendor
+# tree is a downstream 5.4.147 variant, so its surrounding context differs
+# slightly from the upstream SUSFS reference tree.
+PATCH_LOG="$OUT_DIR/susfs-patch.log"
+rm -f "$PATCH_LOG"
+if ! patch --dry-run --batch --forward --fuzz=3 -p1 < "$PATCH_FILE" >"$PATCH_LOG" 2>&1; then
+  cat "$PATCH_LOG" >&2
+  echo "SUSFS kernel-5.4 patch cannot be applied to this source" >&2
+  exit 1
+fi
+patch --batch --forward --fuzz=3 -p1 < "$PATCH_FILE" >>"$PATCH_LOG" 2>&1
+
+# This source tree has a different fs/proc/fd.c body than the SUSFS reference
+# tree. Port the one rejected hunk explicitly and keep the port reviewable.
+if [[ "${SUSFS_NEEDS_FD_PORT:-false}" == true ]]; then
+  python3 "$ROOT_DIR/scripts/port_fd_susfs.py" "$KERNEL_DIR/fs/proc/fd.c"
+  rm -f "$KERNEL_DIR/fs/proc/fd.c.rej"
+fi
+if [[ "${SUSFS_HAS_PROC_BOOTCONFIG:-true}" != true ]]; then
+  if [[ ! -f "$KERNEL_DIR/fs/proc/cmdline.c" ]]; then
+    echo "NX669J source has neither fs/proc/bootconfig.c nor fs/proc/cmdline.c" >&2
     exit 1
   fi
-else
-  patch -p1 < "$PATCH_FILE"
+  python3 "$ROOT_DIR/scripts/port_cmdline_susfs.py" "$KERNEL_DIR/fs/proc/cmdline.c"
 fi
+
+# The Android 12/5.4 payload keeps these files separate from the patch.
 cp -f "$SUSFS_DIR/kernel_patches/fs/susfs.c" fs/susfs.c
-cp -f "$SUSFS_DIR/kernel_patches/include/linux/"* include/linux/
+cp -f "$SUSFS_DIR/kernel_patches/fs/sus_su.c" fs/sus_su.c
+cp -f "$SUSFS_DIR/kernel_patches/include/linux/"*.h include/linux/
+find "$KERNEL_DIR" -name '*.orig' -delete
+if find "$KERNEL_DIR" -name '*.rej' -print -quit | grep -q .; then
+  echo "Unexpected SUSFS reject file remains" >&2
+  find "$KERNEL_DIR" -name '*.rej' -print >&2
+  exit 1
+fi
 
 # The Android 15/6.6 export issue is harmless to fix here and keeps the source
 # compatible if a shared SUSFS helper patch is selected later.
@@ -118,16 +143,26 @@ ensure_config CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS y
 ensure_config CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG y
 ensure_config CONFIG_KSU_SUSFS_OPEN_REDIRECT y
 ensure_config CONFIG_KSU_SUSFS_SUS_MAP y
+# The device is non-GKI and uses /proc/cmdline; port_cmdline_susfs.py provides
+# the corresponding hook when fs/proc/bootconfig.c is absent.
 
-make O="$OUT_DIR" ARCH="$ARCH" LLVM=1 LLVM_IAS=1 \
-  CROSS_COMPILE="$CROSS_COMPILE" CROSS_COMPILE_COMPAT="${CROSS_COMPILE_COMPAT:-arm-linux-gnueabihf-}" \
-  "$KERNEL_DEFCONFIG"
+if [[ -x build/build.sh && -f common/build.config.gki.aarch64 ]]; then
+  echo "Detected synced common/ build tree; using Android build.sh entrypoint."
+  LTO=thin BUILD_CONFIG=common/build.config.gki.aarch64 \
+    build/build.sh CC="${CC:-clang}" LLVM=1 LLVM_IAS=1 \
+    CROSS_COMPILE="$CROSS_COMPILE" CROSS_COMPILE_COMPAT="${CROSS_COMPILE_COMPAT:-arm-linux-gnueabihf-}"
+  IMAGE="$(find "$KERNEL_DIR/out" -type f -path '*/dist/Image' -print -quit)"
+else
+  echo "Using direct make fallback for the single-repository NX669J 5.4.147 source clone."
+  make O="$OUT_DIR" ARCH="$ARCH" LLVM=1 LLVM_IAS=1 \
+    CROSS_COMPILE="$CROSS_COMPILE" CROSS_COMPILE_COMPAT="${CROSS_COMPILE_COMPAT:-arm-linux-gnueabihf-}" \
+    "$KERNEL_DEFCONFIG"
 
-make O="$OUT_DIR" ARCH="$ARCH" LLVM=1 LLVM_IAS=1 \
-  CROSS_COMPILE="$CROSS_COMPILE" CROSS_COMPILE_COMPAT="${CROSS_COMPILE_COMPAT:-arm-linux-gnueabihf-}" \
-  -j"${JOBS:-$(nproc)}" Image modules
-
-IMAGE="$OUT_DIR/arch/arm64/boot/Image"
+  make O="$OUT_DIR" ARCH="$ARCH" LLVM=1 LLVM_IAS=1 \
+    CROSS_COMPILE="$CROSS_COMPILE" CROSS_COMPILE_COMPAT="${CROSS_COMPILE_COMPAT:-arm-linux-gnueabihf-}" \
+    -j"${JOBS:-$(nproc)}" Image modules
+  IMAGE="$OUT_DIR/arch/arm64/boot/Image"
+fi
 if [[ ! -s "$IMAGE" ]]; then
   echo "Kernel Image was not produced at $IMAGE" >&2
   exit 1
