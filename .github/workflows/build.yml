@@ -50,7 +50,7 @@ jobs:
             binutils-aarch64-linux-gnu binutils-arm-linux-gnueabihf \
             gcc-aarch64-linux-gnu gcc-arm-linux-gnueabihf \
             libelf-dev libssl-dev lld llvm pahole \
-            python3 rsync unzip zip
+            python3 rsync unzip which zip
 
       - name: Validate checked-in device contract
         run: |
