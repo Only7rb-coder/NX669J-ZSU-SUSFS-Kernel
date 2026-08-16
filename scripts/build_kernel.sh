@@ -121,6 +121,18 @@ if [[ -f "$SELINUX_HIDE" ]]; then
     "$SELINUX_HIDE"
 fi
 
+# This vendor 5.4 VDSO32 Makefile forces clang through an external assembler.
+# On current Ubuntu runners that path can resolve host /usr/bin/as and reject
+# ARM's -EL flag. Use the installed arm-linux-gnueabihf GCC compat compiler
+# only for VDSO32; the main kernel remains clang/LLVM.
+VDSO32_MAKE="$KERNEL_DIR/arch/arm64/kernel/vdso32/Makefile"
+if [[ -f "$VDSO32_MAKE" ]]; then
+  sed -i \
+    -e 's/^CC_COMPAT ?= $(CC)$/CC_COMPAT := $(CROSS_COMPILE_COMPAT)gcc/' \
+    -e '/^CC_COMPAT += $(CC_COMPAT_CLANG_FLAGS)$/d' \
+    "$VDSO32_MAKE"
+fi
+
 # Generate the platform blend and add only the explicit ZSU/SUSFS options.
 export LLVM=1
 export LLVM_IAS=1
