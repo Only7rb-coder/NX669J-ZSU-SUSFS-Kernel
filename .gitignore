@@ -1,0 +1,14 @@
+kernel/
+out/
+AnyKernel3/
+deps/
+artifacts/
+*.img
+*.img.gz
+*.ko
+*.dtb
+*.dtbo
+*.map
+*.o
+*.cmd
+*.tmp

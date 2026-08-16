@@ -1,0 +1,111 @@
+name: Build NX669J ZSU SUSFS Kernel
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish_release:
+        description: Publish a GitHub Release after all validation checks
+        required: true
+        type: boolean
+        default: false
+      build_lkm:
+        description: Attempt a separate KernelSU LKM module artifact when supported by the source
+        required: true
+        type: boolean
+        default: true
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nx669j-kernel-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: NX669J Android 12 QGKI / KernelSU-Next / SUSFS
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - name: Checkout build repository
+        uses: actions/checkout@v4
+
+      - name: Free runner disk space
+        uses: endersonmenezes/free-disk-space@v3
+        with:
+          remove_android: true
+          remove_dotnet: true
+          remove_haskell: true
+          remove_tool_cache: true
+          remove_swap: true
+          testing: false
+
+      - name: Install kernel build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            bc bison build-essential clang cpio flex gcc-aarch64-linux-gnu \
+            gcc-arm-linux-gnueabihf libelf-dev libssl-dev lld llvm pahole \
+            python3 rsync unzip zip
+
+      - name: Validate checked-in device contract
+        run: |
+          set -euo pipefail
+          test "$(grep '^KERNEL_DEFCONFIG=' config/device.env | cut -d= -f2-)" = "vendor/lahaina-qgki_defconfig"
+          test "$(grep '^NUBIA_TARGET_PRODUCT=' config/device.env | cut -d= -f2-)" = "NX669J"
+          test "$(grep '^ZSU_MANAGER_DER_LENGTH=' config/device.env | cut -d= -f2-)" = "0x318"
+          grep -q '^ZSU_MANAGER_CERT_SHA256=ba1159a5819dec96cdcb2498bef73170b0ba1735c12139bde1b7677bf7c5c2ab$' config/device.env
+
+      - name: Build kernel and integration artifacts
+        env:
+          JOBS: 2
+        run: |
+          set -euo pipefail
+          chmod +x scripts/build_kernel.sh
+          ./scripts/build_kernel.sh
+
+      - name: Package corrected AnyKernel3 installer
+        run: |
+          set -euo pipefail
+          test -s artifacts/Image
+          rm -rf AnyKernel3
+          git clone --depth 1 --branch master https://github.com/Only7rb-coder/ZSU-GKI-AnyKernel3.git AnyKernel3
+          rm -rf AnyKernel3/.git
+          cp artifacts/Image AnyKernel3/Image
+          test -f AnyKernel3/anykernel.sh
+          grep -q 'split_boot' AnyKernel3/anykernel.sh
+          grep -q 'flash_boot' AnyKernel3/anykernel.sh
+          ! grep -qE '^[[:space:]]*(dump_boot|write_boot)' AnyKernel3/anykernel.sh
+          (cd AnyKernel3 && zip -r9 "../artifacts/NX669J-ZSU-SUSFS-AnyKernel3.zip" . -x '*.git*')
+
+      - name: Verify artifacts and integration markers
+        run: |
+          set -euo pipefail
+          test -s artifacts/Image
+          unzip -t artifacts/NX669J-ZSU-SUSFS-AnyKernel3.zip
+          unzip -p artifacts/NX669J-ZSU-SUSFS-AnyKernel3.zip anykernel.sh | grep -q 'split_boot'
+          unzip -p artifacts/NX669J-ZSU-SUSFS-AnyKernel3.zip anykernel.sh | grep -q 'flash_boot'
+          grep -q 'CONFIG_KSU_SUSFS=y' kernel/arch/arm64/configs/vendor/lahaina-qgki_defconfig || true
+          printf 'Image bytes: '
+          stat -c '%s' artifacts/Image
+          printf 'AnyKernel bytes: '
+          stat -c '%s' artifacts/NX669J-ZSU-SUSFS-AnyKernel3.zip
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: NX669J-ZSU-SUSFS-Kernel-${{ github.sha }}
+          path: artifacts/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Create release
+        if: inputs.publish_release == true && github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: nx669j-${{ github.run_number }}
+          name: NX669J ZSU SUSFS Kernel build ${{ github.run_number }}
+          generate_release_notes: true
+          files: artifacts/*
