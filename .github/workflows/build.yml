@@ -46,8 +46,10 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            bc bison build-essential clang cpio flex gcc-aarch64-linux-gnu \
-            gcc-arm-linux-gnueabihf libelf-dev libssl-dev lld llvm pahole \
+            bc bison build-essential clang cpio flex \
+            binutils-aarch64-linux-gnu binutils-arm-linux-gnueabihf \
+            gcc-aarch64-linux-gnu gcc-arm-linux-gnueabihf \
+            libelf-dev libssl-dev lld llvm pahole \
             python3 rsync unzip zip
 
       - name: Validate checked-in device contract
