@@ -88,6 +88,9 @@ if [[ "${SUSFS_NEEDS_FD_PORT:-false}" == true ]]; then
   python3 "$ROOT_DIR/scripts/port_fd_susfs.py" "$KERNEL_DIR/fs/proc/fd.c"
   rm -f "$KERNEL_DIR/fs/proc/fd.c.rej"
 fi
+if [[ -f "$KERNEL_DIR/fs/notify/fdinfo.c" ]]; then
+  python3 "$ROOT_DIR/scripts/port_inotify_susfs.py" "$KERNEL_DIR/fs/notify/fdinfo.c"
+fi
 if [[ "${SUSFS_HAS_PROC_BOOTCONFIG:-true}" != true ]]; then
   if [[ ! -f "$KERNEL_DIR/fs/proc/cmdline.c" ]]; then
     echo "NX669J source has neither fs/proc/bootconfig.c nor fs/proc/cmdline.c" >&2
