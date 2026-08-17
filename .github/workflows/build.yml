@@ -58,9 +58,13 @@ jobs:
           test "$(grep '^KERNEL_DEFCONFIG=' config/device.env | cut -d= -f2-)" = "vendor/lahaina-qgki_defconfig"
           test "$(grep '^NUBIA_TARGET_PRODUCT=' config/device.env | cut -d= -f2-)" = "NX669J"
           test "$(grep '^SUSFS_REF=' config/device.env | cut -d= -f2-)" = "kernel-5.4"
+          test "$(grep '^SUSFS_API_REF=' config/device.env | cut -d= -f2-)" = "gki-android12-5.10"
           test "$(grep '^KSU_REF=' config/device.env | cut -d= -f2-)" = "v3.1.0-legacy-susfs"
           test "$(grep '^ZSU_MANAGER_DER_LENGTH=' config/device.env | cut -d= -f2-)" = "0x318"
           grep -q '^ZSU_MANAGER_CERT_SHA256=ba1159a5819dec96cdcb2498bef73170b0ba1735c12139bde1b7677bf7c5c2ab$' config/device.env
+          test -f scripts/clean_vendor_conflicts.py
+          test -f scripts/port_susfs_fsnotify.py
+          test -f scripts/build_kernel.sh
 
       - name: Build kernel and integration artifacts
         env:
@@ -94,7 +98,13 @@ jobs:
           grep -q '^CONFIG_KSU=y$' kernel/arch/arm64/configs/vendor/lahaina-qgki_defconfig
           grep -q '^CONFIG_KSU_SUSFS=y$' kernel/arch/arm64/configs/vendor/lahaina-qgki_defconfig
           grep -q '^CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y$' kernel/arch/arm64/configs/vendor/lahaina-qgki_defconfig
-          grep -R -q '0x318:ba1159a5819dec96cdcb2498bef73170b0ba1735c12139bde1b7677bf7c5c2ab' kernel/KernelSU-Next/kernel
+          grep -q '^#define SUSFS_VERSION "v2.2.0"$' kernel/include/linux/susfs.h
+          grep -q '^#define SUSFS_MAGIC 0xFAFAFAFA$' kernel/include/linux/susfs_def.h
+          grep -q 'handle_event = susfs_handle_sdcard_inode_event' kernel/fs/susfs.c
+          ! grep -q 'handle_inode_event = susfs_handle_sdcard_inode_event' kernel/fs/susfs.c
+          ! grep -R -nE '^(<<<<<<<|=======|>>>>>>>)' kernel/drivers/rtc/rtc-pm8xxx.c
+          grep -R -q 'KSU_NEXT_MANAGER_SIZE\|KSU_NEXT_MANAGER_HASH\|KSU_NEXT_MANAGER_LIST' kernel/KernelSU-Next/kernel
+          grep -R -q 'ba1159a5819dec96cdcb2498bef73170b0ba1735c12139bde1b7677bf7c5c2ab' kernel/KernelSU-Next/kernel
           printf 'Image bytes: '
           stat -c '%s' artifacts/Image
           printf 'AnyKernel bytes: '

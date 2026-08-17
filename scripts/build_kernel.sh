@@ -17,9 +17,10 @@ export ARCH="${KERNEL_ARCH:-arm64}"
 export CROSS_COMPILE="${CROSS_COMPILE:-aarch64-linux-gnu-}"
 export CLANG_TRIPLE="${CLANG_TRIPLE:-aarch64-linux-gnu-}"
 export REAL_CC="${REAL_CC:-clang}"
-export HOSTCC="${HOSTCC:-gcc}"
-export HOSTLD="${HOSTLD:-ld}"
-export HOSTAR="${HOSTAR:-ar}"
+export CC="${CC:-clang}"
+export HOSTCC="${HOSTCC:-clang}"
+export HOSTLD="${HOSTLD:-ld.lld}"
+export HOSTAR="${HOSTAR:-llvm-ar}"
 export TARGET_NUBIA_SSD="${TARGET_NUBIA_SSD:-false}"
 export NUBIA_TARGET_PRODUCT="${NUBIA_TARGET_PRODUCT:-NX669J}"
 export TARGET_BUILD_VARIANT="${TARGET_BUILD_VARIANT:-user}"
@@ -79,13 +80,23 @@ else
   exit 1
 fi
 
-git clone --depth 1 --branch "$SUSFS_REF" "$SUSFS_REPO" "$ROOT_DIR/deps/susfs4ksu"
 SUSFS_DIR="$ROOT_DIR/deps/susfs4ksu"
+if [[ ! -d "$SUSFS_DIR/.git" ]]; then
+  git clone --depth 1 --branch "$SUSFS_REF" "$SUSFS_REPO" "$SUSFS_DIR"
+fi
+SUSFS_API_DIR="$ROOT_DIR/deps/susfs4ksu-api"
+if [[ ! -d "$SUSFS_API_DIR/.git" ]]; then
+  git clone --depth 1 --branch "${SUSFS_API_REF:-$SUSFS_REF}" "$SUSFS_REPO" "$SUSFS_API_DIR"
+fi
 PATCH_FILE="$SUSFS_DIR/${SUSFS_PATCH:-kernel_patches/50_add_susfs_in_kernel-5.4.patch}"
 if [[ ! -f "$PATCH_FILE" ]]; then
   echo "Missing SUSFS patch $PATCH_FILE" >&2
   exit 1
 fi
+
+# Resolve the one known vendor-source conflict before patching. Fail closed
+# if the downloaded source contains any different conflict layout.
+python3 "$ROOT_DIR/scripts/clean_vendor_conflicts.py" "$KERNEL_DIR/drivers/rtc/rtc-pm8xxx.c"
 
 # Apply the kernel-5.4 patch with a bounded fuzz level. The NX669J vendor
 # tree is a downstream 5.4.147 variant, so its surrounding context differs
@@ -117,10 +128,25 @@ if [[ "${SUSFS_HAS_PROC_BOOTCONFIG:-true}" != true ]]; then
   python3 "$ROOT_DIR/scripts/port_cmdline_susfs.py" "$KERNEL_DIR/fs/proc/cmdline.c"
 fi
 
-# The Android 12/5.4 payload keeps these files separate from the patch.
-cp -f "$SUSFS_DIR/kernel_patches/fs/susfs.c" fs/susfs.c
-cp -f "$SUSFS_DIR/kernel_patches/fs/sus_su.c" fs/sus_su.c
-cp -f "$SUSFS_DIR/kernel_patches/include/linux/"*.h include/linux/
+# The kernel-5.4 branch supplies the source-tree patch, while the v2.2 API
+# implementation comes from the Android 12/5.10 branch. KernelSU-Next
+# v3.1.0-legacy-susfs calls this v2.x API directly.
+for payload in fs/susfs.c include/linux/susfs.h include/linux/susfs_def.h; do
+  if [[ ! -f "$SUSFS_API_DIR/kernel_patches/$payload" ]]; then
+    echo "Missing SUSFS v2.2 payload: $SUSFS_API_DIR/kernel_patches/$payload" >&2
+    exit 1
+  fi
+done
+cp -f "$SUSFS_API_DIR/kernel_patches/fs/susfs.c" fs/susfs.c
+cp -f "$SUSFS_API_DIR/kernel_patches/include/linux/susfs.h" include/linux/susfs.h
+cp -f "$SUSFS_API_DIR/kernel_patches/include/linux/susfs_def.h" include/linux/susfs_def.h
+# The v2.2 payload is authored for a 5.10 fsnotify_ops layout. NX669J's
+# vendor kernel is 5.4, where the callback field is handle_event and uses
+# the older eight-argument ABI.
+python3 "$ROOT_DIR/scripts/port_susfs_fsnotify.py" "$KERNEL_DIR/fs/susfs.c"
+if [[ -f "$SUSFS_DIR/kernel_patches/fs/sus_su.c" ]]; then
+  cp -f "$SUSFS_DIR/kernel_patches/fs/sus_su.c" fs/sus_su.c
+fi
 find "$KERNEL_DIR" -name '*.orig' -delete
 if find "$KERNEL_DIR" -name '*.rej' -print -quit | grep -q .; then
   echo "Unexpected SUSFS reject file remains" >&2
@@ -154,6 +180,11 @@ fi
 # Generate the platform blend and add only the explicit ZSU/SUSFS options.
 export LLVM=1
 export LLVM_IAS=1
+# The vendor 5.4 tree predates modern warning cleanup. Keep warnings visible,
+# but prevent known legacy-driver warnings from aborting an otherwise valid
+# clang build. Do not disable general diagnostics or incompatible-pointer errors.
+VENDOR_WARN_FLAGS="${KCFLAGS:-} -Wno-unused-but-set-variable -Wno-error=unused-but-set-variable -Wno-strict-prototypes -Wno-error=strict-prototypes -Wno-implicit-int -Wno-error=implicit-int"
+export KCFLAGS="$VENDOR_WARN_FLAGS"
 scripts/gki/generate_defconfig.sh "$KERNEL_DEFCONFIG"
 DEFCONFIG_PATH="arch/arm64/configs/$KERNEL_DEFCONFIG"
 
@@ -183,18 +214,20 @@ ensure_config CONFIG_KSU_SUSFS_SUS_MAP y
 if [[ -x build/build.sh && -f common/build.config.gki.aarch64 ]]; then
   echo "Detected synced common/ build tree; using Android build.sh entrypoint."
   LTO=thin BUILD_CONFIG=common/build.config.gki.aarch64 DISABLE_WRAPPER=1 \
-    build/build.sh CC="${CC:-clang}" LLVM=1 LLVM_IAS=1 \
+    KCFLAGS="$VENDOR_WARN_FLAGS" build/build.sh CC="${CC:-clang}" LLVM=1 LLVM_IAS=1 \
     CROSS_COMPILE="$CROSS_COMPILE" CROSS_COMPILE_COMPAT="${CROSS_COMPILE_COMPAT:-arm-linux-gnueabihf-}"
   IMAGE="$(find "$KERNEL_DIR/out" -type f -path '*/dist/Image' -print -quit)"
 else
   echo "Using direct make fallback for the single-repository NX669J 5.4.147 source clone."
   make O="$OUT_DIR" ARCH="$ARCH" LLVM=1 LLVM_IAS=1 LTO=thin DISABLE_WRAPPER=1 \
-    CROSS_COMPILE="$CROSS_COMPILE" CROSS_COMPILE_COMPAT="${CROSS_COMPILE_COMPAT:-arm-linux-gnueabihf-}" \
+    KCFLAGS="$VENDOR_WARN_FLAGS" CROSS_COMPILE="$CROSS_COMPILE" \
+    CROSS_COMPILE_COMPAT="${CROSS_COMPILE_COMPAT:-arm-linux-gnueabihf-}" \
     "$KERNEL_DEFCONFIG"
 
   make O="$OUT_DIR" ARCH="$ARCH" LLVM=1 LLVM_IAS=1 LTO=thin DISABLE_WRAPPER=1 \
-    CROSS_COMPILE="$CROSS_COMPILE" CROSS_COMPILE_COMPAT="${CROSS_COMPILE_COMPAT:-arm-linux-gnueabihf-}" \
-    -j"${JOBS:-$(nproc)}" Image modules
+    KCFLAGS="$VENDOR_WARN_FLAGS" CROSS_COMPILE="$CROSS_COMPILE" \
+    CROSS_COMPILE_COMPAT="${CROSS_COMPILE_COMPAT:-arm-linux-gnueabihf-}" \
+    -j"${JOBS:-$(nproc)}" Image
   IMAGE="$OUT_DIR/arch/arm64/boot/Image"
 fi
 if [[ ! -s "$IMAGE" ]]; then
