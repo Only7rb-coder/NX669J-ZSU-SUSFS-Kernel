@@ -127,6 +127,10 @@ if [[ "${SUSFS_HAS_PROC_BOOTCONFIG:-true}" != true ]]; then
   fi
   python3 "$ROOT_DIR/scripts/port_cmdline_susfs.py" "$KERNEL_DIR/fs/proc/cmdline.c"
 fi
+# KernelSU's generated Kbuild mutation is not reliable across this vendor
+# tree's parallel build path, so install the 5.4 path_umount backport directly.
+python3 "$ROOT_DIR/scripts/port_path_umount_54.py" \
+  "$KERNEL_DIR/fs/namespace.c" "$KERNEL_DIR/fs/internal.h"
 
 # The kernel-5.4 branch supplies the source-tree patch, while the v2.2 API
 # implementation comes from the Android 12/5.10 branch. KernelSU-Next
@@ -145,6 +149,9 @@ cp -f "$SUSFS_API_DIR/kernel_patches/include/linux/susfs_def.h" include/linux/su
 # the older eight-argument ABI.
 python3 "$ROOT_DIR/scripts/port_susfs_54_defs.py" "$KERNEL_DIR/include/linux/susfs_def.h"
 python3 "$ROOT_DIR/scripts/port_susfs_fsnotify.py" "$KERNEL_DIR/fs/susfs.c"
+# Export the legacy helper names still referenced by the kernel-5.4 patch and
+# by KernelSU-Next's setuid/VFS hooks while retaining v2.2 command handling.
+python3 "$ROOT_DIR/scripts/port_susfs_54_legacy.py" "$KERNEL_DIR/fs/susfs.c"
 if [[ -f "$SUSFS_DIR/kernel_patches/fs/sus_su.c" ]]; then
   cp -f "$SUSFS_DIR/kernel_patches/fs/sus_su.c" fs/sus_su.c
 fi

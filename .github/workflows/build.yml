@@ -65,6 +65,8 @@ jobs:
           test -f scripts/clean_vendor_conflicts.py
           test -f scripts/port_susfs_fsnotify.py
           test -f scripts/port_susfs_54_defs.py
+          test -f scripts/port_susfs_54_legacy.py
+          test -f scripts/port_path_umount_54.py
           test -f scripts/build_kernel.sh
 
       - name: Build kernel and integration artifacts
@@ -104,6 +106,14 @@ jobs:
           grep -q '^#define SUSFS_MAGIC 0xFAFAFAFA$' kernel/include/linux/susfs_def.h
           grep -q '^#define DEFAULT_SUS_MNT_ID 100000$' kernel/include/linux/susfs_def.h
           grep -q '^#define TASK_STRUCT_NON_ROOT_USER_APP_PROC BIT(24)$' kernel/include/linux/susfs_def.h
+          grep -Fq 'int path_umount(struct path *path, int flags)' kernel/fs/namespace.c
+          grep -Fq 'int path_umount(struct path *path, int flags);' kernel/fs/internal.h
+          grep -Fq 'void susfs_run_sus_path_loop(uid_t uid)' kernel/fs/susfs.c
+          grep -Fq 'int susfs_sus_ino_for_filldir64(unsigned long ino)' kernel/fs/susfs.c
+          grep -Fq 'void susfs_sus_ino_for_generic_fillattr(unsigned long ino, struct kstat *stat)' kernel/fs/susfs.c
+          grep -Fq 'void susfs_sus_ino_for_show_map_vma(unsigned long ino, dev_t *out_dev, unsigned long *out_ino)' kernel/fs/susfs.c
+          grep -Fq 'struct filename *susfs_get_redirected_path(unsigned long ino)' kernel/fs/susfs.c
+          grep -Fq 'void susfs_reorder_mnt_id(void)' kernel/fs/susfs.c
           grep -q 'handle_event = susfs_handle_sdcard_inode_event' kernel/fs/susfs.c
           ! grep -q 'handle_inode_event = susfs_handle_sdcard_inode_event' kernel/fs/susfs.c
           ! grep -R -nE '^(<<<<<<<|=======|>>>>>>>)' kernel/drivers/rtc/rtc-pm8xxx.c
