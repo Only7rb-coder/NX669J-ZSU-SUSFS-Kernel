@@ -99,6 +99,7 @@ jobs:
           grep -q '^CONFIG_KSU=y$' kernel/arch/arm64/configs/vendor/lahaina-qgki_defconfig
           grep -q '^CONFIG_KSU_SUSFS=y$' kernel/arch/arm64/configs/vendor/lahaina-qgki_defconfig
           grep -q '^CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y$' kernel/arch/arm64/configs/vendor/lahaina-qgki_defconfig
+          grep -q '^CONFIG_KSU_SUSFS_TRY_UMOUNT=n$' kernel/arch/arm64/configs/vendor/lahaina-qgki_defconfig
           grep -q '^#define SUSFS_VERSION "v2.2.0"$' kernel/include/linux/susfs.h
           grep -q '^#define SUSFS_MAGIC 0xFAFAFAFA$' kernel/include/linux/susfs_def.h
           grep -q '^#define DEFAULT_SUS_MNT_ID 100000$' kernel/include/linux/susfs_def.h

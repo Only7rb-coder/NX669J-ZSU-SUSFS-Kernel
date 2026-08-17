@@ -209,6 +209,9 @@ ensure_config CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS y
 ensure_config CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG y
 ensure_config CONFIG_KSU_SUSFS_OPEN_REDIRECT y
 ensure_config CONFIG_KSU_SUSFS_SUS_MAP y
+# v2.2 removed the deprecated v1.x try-umount handler; legacy KernelSU
+# still contains a guarded call site, so keep this unsupported option off.
+ensure_config CONFIG_KSU_SUSFS_TRY_UMOUNT n
 # The device is non-GKI and uses /proc/cmdline; port_cmdline_susfs.py provides
 # the corresponding hook when fs/proc/bootconfig.c is absent.
 

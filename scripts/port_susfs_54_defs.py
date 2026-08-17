@@ -7,7 +7,9 @@ import sys
 
 MARKER = "/* NX669J Linux 5.4 compatibility definitions. */"
 CRED_INCLUDE = "#include <linux/cred.h>\n"
-BLOCK = """\n\n{marker}
+BLOCK = """
+
+/* NX669J Linux 5.4 compatibility definitions. */
 /* The kernel-5.4 SUSFS patch still uses the v1.x mount/task/inode fields. */
 #ifndef DEFAULT_SUS_MNT_ID
 #define DEFAULT_SUS_MNT_ID 100000
@@ -33,7 +35,16 @@ BLOCK = """\n\n{marker}
 #ifndef TASK_STRUCT_NON_ROOT_USER_APP_PROC
 #define TASK_STRUCT_NON_ROOT_USER_APP_PROC BIT(24)
 #endif
-""".format(marker=MARKER)
+/* v2.2 removed these deprecated v1.x command handlers. KernelSU-Next's
+ * legacy-susfs supercalls file still references them unconditionally. */
+#ifndef KSU_SUSFS_54_DEPRECATED_API
+#define KSU_SUSFS_54_DEPRECATED_API
+static inline void susfs_set_i_state_on_external_dir(void *user_info)
+{
+    (void)user_info;
+}
+#endif
+"""
 
 
 def main() -> int:
