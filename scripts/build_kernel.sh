@@ -143,6 +143,7 @@ cp -f "$SUSFS_API_DIR/kernel_patches/include/linux/susfs_def.h" include/linux/su
 # The v2.2 payload is authored for a 5.10 fsnotify_ops layout. NX669J's
 # vendor kernel is 5.4, where the callback field is handle_event and uses
 # the older eight-argument ABI.
+python3 "$ROOT_DIR/scripts/port_susfs_54_defs.py" "$KERNEL_DIR/include/linux/susfs_def.h"
 python3 "$ROOT_DIR/scripts/port_susfs_fsnotify.py" "$KERNEL_DIR/fs/susfs.c"
 if [[ -f "$SUSFS_DIR/kernel_patches/fs/sus_su.c" ]]; then
   cp -f "$SUSFS_DIR/kernel_patches/fs/sus_su.c" fs/sus_su.c
