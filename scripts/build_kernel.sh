@@ -152,6 +152,13 @@ python3 "$ROOT_DIR/scripts/port_susfs_fsnotify.py" "$KERNEL_DIR/fs/susfs.c"
 # Export the legacy helper names still referenced by the kernel-5.4 patch and
 # by KernelSU-Next's setuid/VFS hooks while retaining v2.2 command handling.
 python3 "$ROOT_DIR/scripts/port_susfs_54_legacy.py" "$KERNEL_DIR/fs/susfs.c"
+# Restore the deprecated SUSFS TRY_UMOUNT ABI and automatic bind-mount path
+# registration on top of the v2.2 implementation for this Linux 5.4 device.
+python3 "$ROOT_DIR/scripts/port_susfs_try_umount.py" \
+  "$KERNEL_DIR/fs/susfs.c" "$KERNEL_DIR/include/linux/susfs.h" \
+  "$KERNEL_DIR/include/linux/susfs_def.h" \
+  "$KERNEL_DIR/KernelSU-Next/kernel/supercalls.c" \
+  "$KERNEL_DIR/KernelSU-Next/kernel/Kconfig" "$KERNEL_DIR/fs/namespace.c"
 if [[ -f "$SUSFS_DIR/kernel_patches/fs/sus_su.c" ]]; then
   cp -f "$SUSFS_DIR/kernel_patches/fs/sus_su.c" fs/sus_su.c
 fi
@@ -216,9 +223,10 @@ ensure_config CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS y
 ensure_config CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG y
 ensure_config CONFIG_KSU_SUSFS_OPEN_REDIRECT y
 ensure_config CONFIG_KSU_SUSFS_SUS_MAP y
-# v2.2 removed the deprecated v1.x try-umount handler; legacy KernelSU
-# still contains a guarded call site, so keep this unsupported option off.
-ensure_config CONFIG_KSU_SUSFS_TRY_UMOUNT n
+# Restore the legacy TRY_UMOUNT feature and automatic bind-mount registration;
+# port_susfs_try_umount.py supplies the missing v2.2 implementation and routes.
+ensure_config CONFIG_KSU_SUSFS_TRY_UMOUNT y
+ensure_config CONFIG_KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT y
 # The device is non-GKI and uses /proc/cmdline; port_cmdline_susfs.py provides
 # the corresponding hook when fs/proc/bootconfig.c is absent.
 

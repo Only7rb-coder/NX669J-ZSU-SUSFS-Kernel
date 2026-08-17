@@ -67,6 +67,7 @@ jobs:
           test -f scripts/port_susfs_54_defs.py
           test -f scripts/port_susfs_54_legacy.py
           test -f scripts/port_path_umount_54.py
+          test -f scripts/port_susfs_try_umount.py
           test -f scripts/build_kernel.sh
 
       - name: Build kernel and integration artifacts
@@ -101,7 +102,18 @@ jobs:
           grep -q '^CONFIG_KSU=y$' kernel/arch/arm64/configs/vendor/lahaina-qgki_defconfig
           grep -q '^CONFIG_KSU_SUSFS=y$' kernel/arch/arm64/configs/vendor/lahaina-qgki_defconfig
           grep -q '^CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y$' kernel/arch/arm64/configs/vendor/lahaina-qgki_defconfig
-          grep -q '^CONFIG_KSU_SUSFS_TRY_UMOUNT=n$' kernel/arch/arm64/configs/vendor/lahaina-qgki_defconfig
+          grep -q '^CONFIG_KSU_SUSFS_TRY_UMOUNT=y$' kernel/arch/arm64/configs/vendor/lahaina-qgki_defconfig
+          grep -q '^CONFIG_KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT=y$' kernel/arch/arm64/configs/vendor/lahaina-qgki_defconfig
+          grep -Fq 'struct st_susfs_try_umount {' kernel/include/linux/susfs.h
+          grep -Fq '#define CMD_SUSFS_RUN_UMOUNT_FOR_CURRENT_MNT_NS 0x555d0' kernel/include/linux/susfs_def.h
+          grep -Fq 'int susfs_add_try_umount(void __user **user_info)' kernel/fs/susfs.c
+          grep -Fq 'void susfs_try_umount(uid_t target_uid)' kernel/fs/susfs.c
+          grep -Fq 'void susfs_try_umount_all(uid_t target_uid)' kernel/fs/susfs.c
+          grep -Fq 'void susfs_auto_add_try_umount_for_bind_mount(struct path *path)' kernel/fs/susfs.c
+          grep -Fq 'CONFIG_KSU_SUSFS_TRY_UMOUNT\\n' kernel/fs/susfs.c
+          grep -Fq 'susfs_run_try_umount_for_current_mnt_ns();' kernel/KernelSU-Next/kernel/supercalls.c
+          grep -Fq 'susfs_auto_add_try_umount_for_bind_mount(path);' kernel/fs/namespace.c
+          grep -Fq 'config KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT' kernel/KernelSU-Next/kernel/Kconfig
           grep -q '^#define SUSFS_VERSION "v2.2.0"$' kernel/include/linux/susfs.h
           grep -q '^#define SUSFS_MAGIC 0xFAFAFAFA$' kernel/include/linux/susfs_def.h
           grep -q '^#define DEFAULT_SUS_MNT_ID 100000$' kernel/include/linux/susfs_def.h
