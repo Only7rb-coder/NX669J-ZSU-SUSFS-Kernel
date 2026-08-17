@@ -35,29 +35,47 @@ fi
 cd "$KERNEL_DIR"
 
 # KernelSU-Next's maintained setup script integrates drivers/kernelsu into both
-# common-style GKI trees and ordinary Qualcomm kernel trees.
+# common-style GKI trees and ordinary Qualcomm kernel trees. The legacy-susfs
+# tag is pinned in device.env because the moving dev-susfs head is not compatible
+# with this vendor tree's Linux 5.4 SELinux internals.
 if [[ ! -d KernelSU-Next ]]; then
-  curl -fsSL https://raw.githubusercontent.com/pershoot/KernelSU-Next/dev-susfs/kernel/setup.sh \
+  curl -fsSL "${KSU_SETUP_URL:-https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/dev-susfs/kernel/setup.sh}" \
     | bash -s "$KSU_REF"
 fi
 
-KSU_KBUILD="$KERNEL_DIR/KernelSU-Next/kernel/Kbuild"
+KSU_ROOT="$KERNEL_DIR/KernelSU-Next/kernel"
+KSU_KBUILD="$KSU_ROOT/Kbuild"
 if [[ ! -f "$KSU_KBUILD" ]]; then
   echo "KernelSU-Next Kbuild was not integrated at $KSU_KBUILD" >&2
   exit 1
 fi
 
 # Restrict manager authorization to normal/spoofed ZSU APKs signed by the ZSU
-# certificate. This prevents an unrelated KernelSU-Next manager from being
-# crowned by a ZSU kernel.
+# certificate. Newer builds use a comma-separated KSU_NEXT_MANAGER_LIST; the
+# legacy-susfs tag uses the equivalent size/hash pair in Kbuild.
 ZSU_SIGNATURE="${ZSU_MANAGER_DER_LENGTH}:${ZSU_MANAGER_CERT_SHA256}"
-if ! grep -q '^KSU_NEXT_MANAGER_LIST :=' "$KSU_KBUILD"; then
-  echo "KernelSU-Next manager allowlist is missing" >&2
+if grep -q '^KSU_NEXT_MANAGER_LIST :=' "$KSU_KBUILD"; then
+  sed -i "s|^KSU_NEXT_MANAGER_LIST := .*|KSU_NEXT_MANAGER_LIST := $ZSU_SIGNATURE|" "$KSU_KBUILD"
+  if grep -q '^KSU_NEXT_MANAGER_LIST := .*,' "$KSU_KBUILD"; then
+    echo "Manager allowlist still contains multiple entries" >&2
+    exit 1
+  fi
+elif grep -qE '^KSU_NEXT_MANAGER_(SIZE|HASH) :=' "$KSU_KBUILD"; then
+  sed -i \
+    -e "s|^KSU_NEXT_MANAGER_SIZE := .*|KSU_NEXT_MANAGER_SIZE := ${ZSU_MANAGER_DER_LENGTH}|" \
+    -e "s|^KSU_NEXT_MANAGER_HASH := .*|KSU_NEXT_MANAGER_HASH := ${ZSU_MANAGER_CERT_SHA256}|" \
+    "$KSU_KBUILD"
+else
+  echo "KernelSU-Next manager certificate contract is missing" >&2
   exit 1
 fi
-sed -i "s|^KSU_NEXT_MANAGER_LIST := .*|KSU_NEXT_MANAGER_LIST := $ZSU_SIGNATURE|" "$KSU_KBUILD"
-if grep -q '^KSU_NEXT_MANAGER_LIST := .*,' "$KSU_KBUILD"; then
-  echo "Manager allowlist still contains multiple entries" >&2
+if grep -q '^KSU_NEXT_MANAGER_LIST :=' "$KSU_KBUILD"; then
+  grep -q "$ZSU_SIGNATURE" "$KSU_KBUILD"
+elif grep -q '^KSU_NEXT_MANAGER_SIZE :=' "$KSU_KBUILD"; then
+  grep -q "^KSU_NEXT_MANAGER_SIZE := ${ZSU_MANAGER_DER_LENGTH}$" "$KSU_KBUILD"
+  grep -q "^KSU_NEXT_MANAGER_HASH := ${ZSU_MANAGER_CERT_SHA256}$" "$KSU_KBUILD"
+else
+  echo "ZSU manager certificate was not injected into KernelSU-Next" >&2
   exit 1
 fi
 
