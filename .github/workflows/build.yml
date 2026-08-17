@@ -110,7 +110,7 @@ jobs:
           grep -Fq 'void susfs_try_umount(uid_t target_uid)' kernel/fs/susfs.c
           grep -Fq 'void susfs_try_umount_all(uid_t target_uid)' kernel/fs/susfs.c
           grep -Fq 'void susfs_auto_add_try_umount_for_bind_mount(struct path *path)' kernel/fs/susfs.c
-          grep -Fq 'CONFIG_KSU_SUSFS_TRY_UMOUNT\\n' kernel/fs/susfs.c
+          grep -Fq 'CONFIG_KSU_SUSFS_TRY_UMOUNT\n' kernel/fs/susfs.c
           grep -Fq 'susfs_run_try_umount_for_current_mnt_ns();' kernel/KernelSU-Next/kernel/supercalls.c
           grep -Fq 'susfs_auto_add_try_umount_for_bind_mount(path);' kernel/fs/namespace.c
           grep -Fq 'config KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT' kernel/KernelSU-Next/kernel/Kconfig
