@@ -164,17 +164,17 @@ ensure_config CONFIG_KSU_SUSFS_SUS_MAP y
 
 if [[ -x build/build.sh && -f common/build.config.gki.aarch64 ]]; then
   echo "Detected synced common/ build tree; using Android build.sh entrypoint."
-  LTO=thin BUILD_CONFIG=common/build.config.gki.aarch64 \
+  LTO=thin BUILD_CONFIG=common/build.config.gki.aarch64 DISABLE_WRAPPER=1 \
     build/build.sh CC="${CC:-clang}" LLVM=1 LLVM_IAS=1 \
     CROSS_COMPILE="$CROSS_COMPILE" CROSS_COMPILE_COMPAT="${CROSS_COMPILE_COMPAT:-arm-linux-gnueabihf-}"
   IMAGE="$(find "$KERNEL_DIR/out" -type f -path '*/dist/Image' -print -quit)"
 else
   echo "Using direct make fallback for the single-repository NX669J 5.4.147 source clone."
-  make O="$OUT_DIR" ARCH="$ARCH" LLVM=1 LLVM_IAS=1 LTO=thin \
+  make O="$OUT_DIR" ARCH="$ARCH" LLVM=1 LLVM_IAS=1 LTO=thin DISABLE_WRAPPER=1 \
     CROSS_COMPILE="$CROSS_COMPILE" CROSS_COMPILE_COMPAT="${CROSS_COMPILE_COMPAT:-arm-linux-gnueabihf-}" \
     "$KERNEL_DEFCONFIG"
 
-  make O="$OUT_DIR" ARCH="$ARCH" LLVM=1 LLVM_IAS=1 LTO=thin \
+  make O="$OUT_DIR" ARCH="$ARCH" LLVM=1 LLVM_IAS=1 LTO=thin DISABLE_WRAPPER=1 \
     CROSS_COMPILE="$CROSS_COMPILE" CROSS_COMPILE_COMPAT="${CROSS_COMPILE_COMPAT:-arm-linux-gnueabihf-}" \
     -j"${JOBS:-$(nproc)}" Image modules
   IMAGE="$OUT_DIR/arch/arm64/boot/Image"
