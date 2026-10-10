@@ -200,6 +200,62 @@ void susfs_auto_add_try_umount_for_bind_mount(struct path *path)
 '''
 
 KCONFIG_BLOCK = r'''
+menu "KernelSU - SUSFS"
+config KSU_SUSFS
+    bool "KernelSU addon - SUSFS"
+    depends on KSU
+    default y
+
+config KSU_SUSFS_SUS_PATH
+    bool "Enable to hide suspicious path"
+    depends on KSU_SUSFS
+    default y
+
+config KSU_SUSFS_SUS_MOUNT
+    bool "Enable to hide suspicious mounts"
+    depends on KSU_SUSFS
+    default y
+
+config KSU_SUSFS_SUS_KSTAT
+    bool "Enable to spoof suspicious kstat"
+    depends on KSU_SUSFS
+    default y
+
+config KSU_SUSFS_SPOOF_UNAME
+    bool "Enable to spoof uname"
+    depends on KSU_SUSFS
+    default y
+
+config KSU_SUSFS_ENABLE_LOG
+    bool "Enable SUSFS kernel logging"
+    depends on KSU_SUSFS
+    default y
+
+config KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS
+    bool "Hide KernelSU and SUSFS symbols"
+    depends on KSU_SUSFS
+    default y
+
+config KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG
+    bool "Enable command-line or bootconfig spoofing"
+    depends on KSU_SUSFS
+    default y
+
+config KSU_SUSFS_OPEN_REDIRECT
+    bool "Enable open path redirection"
+    depends on KSU_SUSFS
+    default y
+
+config KSU_SUSFS_SUS_MAP
+    bool "Enable suspicious map hiding"
+    depends on KSU_SUSFS
+    default y
+
+config KSU_SUSFS_TRY_UMOUNT
+    bool "Enable SUSFS TRY_UMOUNT support"
+    depends on KSU_SUSFS
+    default y
+
 config KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT
     bool "Enable automatic TRY_UMOUNT registration for bind mounts"
     depends on KSU_SUSFS_TRY_UMOUNT
@@ -208,7 +264,7 @@ config KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT
       Automatically add bind-mounted paths created by the KernelSU domain to
       the SUSFS TRY_UMOUNT list. Create
       /data/adb/susfs_no_auto_add_try_umount_for_bind_mount to disable it.
-
+endmenu
 '''
 
 
@@ -238,7 +294,12 @@ def add_defs(defs: pathlib.Path) -> None:
 
 def add_kconfig(kconfig: pathlib.Path) -> None:
     text = kconfig.read_text()
-    if "config KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT" not in text:
+    if "config KSU_SUSFS\n" not in text:
+        position = text.rfind("endmenu")
+        if position < 0:
+            raise ValueError("Kconfig has no endmenu anchor")
+        text = text[:position] + KCONFIG_BLOCK + "\n" + text[position:]
+    elif "config KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT" not in text:
         text = once(text, "config KSU_SUSFS_SPOOF_UNAME", KCONFIG_BLOCK + "config KSU_SUSFS_SPOOF_UNAME", "Kconfig insertion")
     kconfig.write_text(text)
 
