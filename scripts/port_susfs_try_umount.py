@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pathlib
+import re
 import sys
 
 MARKER = "/* NX669J SUSFS TRY_UMOUNT compatibility port. */"
@@ -333,6 +334,20 @@ def add_source(source: pathlib.Path) -> None:
     source.write_text(text + SOURCE_BLOCK)
 
 
+def remove_duplicate_namespace_runner(source: pathlib.Path, namespace: pathlib.Path) -> None:
+    """Keep the namespace-patch implementation when it already defines the runner."""
+    namespace_text = namespace.read_text()
+    source_text = source.read_text()
+    signature = r"void\s+susfs_run_try_umount_for_current_mnt_ns\s*\(\s*void\s*\)"
+    if not re.search(signature, namespace_text):
+        return
+    source_text, count = re.subn(
+        signature + r"\s*\{[^{}]*\}\s*", "", source_text, count=1
+    )
+    if count:
+        source.write_text(source_text)
+
+
 def add_supercalls(supercalls: pathlib.Path) -> None:
     text = supercalls.read_text()
     if "susfs_run_try_umount_for_current_mnt_ns();" in text:
@@ -400,6 +415,7 @@ def main() -> int:
     add_header(header)
     add_kconfig(kconfig)
     add_source(source)
+    remove_duplicate_namespace_runner(source, namespace)
     add_supercalls(supercalls)
     add_namespace_hook(namespace)
     print("restored SUSFS TRY_UMOUNT compatibility and automatic bind-mount registration")
