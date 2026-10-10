@@ -362,6 +362,7 @@ def add_supercalls(supercalls: pathlib.Path) -> None:
     fallback = r'''
 
 #ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
+extern void susfs_run_try_umount_for_current_mnt_ns(void);
 static void nx669j_susfs_legacy_try_umount_hook(void)
 {
 	susfs_run_try_umount_for_current_mnt_ns();
