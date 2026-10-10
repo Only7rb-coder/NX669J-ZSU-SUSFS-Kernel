@@ -259,9 +259,9 @@ else
   make O="$OUT_DIR" ARCH="$ARCH" LLVM=1 LLVM_IAS=1 LTO=thin DISABLE_WRAPPER=1 \
     KCFLAGS="$VENDOR_WARN_FLAGS" CROSS_COMPILE="$CROSS_COMPILE" \
     CROSS_COMPILE_COMPAT="${CROSS_COMPILE_COMPAT:-arm-linux-gnueabihf-}" \
-    security/selinux/include/flask.h
-  if [[ ! -s "$OUT_DIR/security/selinux/include/flask.h" ]]; then
-    echo "SELinux prepare did not generate $OUT_DIR/security/selinux/include/flask.h" >&2
+    security/selinux/flask.h
+  if [[ ! -s "$OUT_DIR/security/selinux/flask.h" ]]; then
+    echo "SELinux prepare did not generate $OUT_DIR/security/selinux/flask.h" >&2
     exit 1
   fi
   make O="$OUT_DIR" ARCH="$ARCH" LLVM=1 LLVM_IAS=1 LTO=thin DISABLE_WRAPPER=1 \
