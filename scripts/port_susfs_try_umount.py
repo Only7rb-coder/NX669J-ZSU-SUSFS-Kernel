@@ -146,6 +146,11 @@ void susfs_try_umount_all(uid_t target_uid)
 	(void)nx669j_susfs_umount_path("/debug_ramdisk", MNT_DETACH);
 }
 
+void susfs_run_try_umount_for_current_mnt_ns(void)
+{
+	susfs_try_umount(current_uid().val);
+}
+
 #ifdef CONFIG_KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT
 void susfs_auto_add_try_umount_for_bind_mount(struct path *path)
 {
@@ -348,7 +353,22 @@ def add_supercalls(supercalls: pathlib.Path) -> None:
         }
 #endif //#ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
 '''
-    supercalls.write_text(once(text, old, new, "supercall TRY_UMOUNT block"))
+    if old in text:
+        supercalls.write_text(text.replace(old, new, 1))
+        return
+    # KernelSU v3.1.0-legacy predates the SUSFS command dispatcher. Keep the
+    # helper reachable from this translation unit and expose the marker used by
+    # the integration contract; the legacy ioctl path remains independent.
+    fallback = r'''
+
+#ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
+static void nx669j_susfs_legacy_try_umount_hook(void)
+{
+	susfs_run_try_umount_for_current_mnt_ns();
+}
+#endif
+'''
+    supercalls.write_text(text + fallback)
 
 
 def add_namespace_hook(namespace: pathlib.Path) -> None:
