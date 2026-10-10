@@ -243,6 +243,14 @@ else
     CROSS_COMPILE_COMPAT="${CROSS_COMPILE_COMPAT:-arm-linux-gnueabihf-}" \
     "$KERNEL_DEFCONFIG"
 
+  # This vendor tree can omit the drivers recursive target from the first
+  # Image invocation after defconfig regeneration. Build it explicitly so
+  # vmlinux always receives drivers/built-in.a.
+  make O="$OUT_DIR" ARCH="$ARCH" LLVM=1 LLVM_IAS=1 LTO=thin DISABLE_WRAPPER=1 \
+    KCFLAGS="$VENDOR_WARN_FLAGS" CROSS_COMPILE="$CROSS_COMPILE" \
+    CROSS_COMPILE_COMPAT="${CROSS_COMPILE_COMPAT:-arm-linux-gnueabihf-}" \
+    -j"${JOBS:-$(nproc)}" drivers
+
   make O="$OUT_DIR" ARCH="$ARCH" LLVM=1 LLVM_IAS=1 LTO=thin DISABLE_WRAPPER=1 \
     KCFLAGS="$VENDOR_WARN_FLAGS" CROSS_COMPILE="$CROSS_COMPILE" \
     CROSS_COMPILE_COMPAT="${CROSS_COMPILE_COMPAT:-arm-linux-gnueabihf-}" \
