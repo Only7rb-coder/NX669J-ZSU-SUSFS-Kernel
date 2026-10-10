@@ -59,7 +59,7 @@ jobs:
           test "$(grep '^NUBIA_TARGET_PRODUCT=' config/device.env | cut -d= -f2-)" = "NX669J"
           test "$(grep '^SUSFS_REF=' config/device.env | cut -d= -f2-)" = "kernel-5.4"
           test "$(grep '^SUSFS_API_REF=' config/device.env | cut -d= -f2-)" = "gki-android12-5.10"
-          test "$(grep '^KSU_REF=' config/device.env | cut -d= -f2-)" = "v3.1.0-legacy-susfs"
+          test "$(grep '^KSU_REF=' config/device.env | cut -d= -f2-)" = "v3.1.0-legacy"
           test "$(grep '^ZSU_MANAGER_DER_LENGTH=' config/device.env | cut -d= -f2-)" = "0x318"
           grep -q '^ZSU_MANAGER_CERT_SHA256=ba1159a5819dec96cdcb2498bef73170b0ba1735c12139bde1b7677bf7c5c2ab$' config/device.env
           test -f scripts/clean_vendor_conflicts.py
