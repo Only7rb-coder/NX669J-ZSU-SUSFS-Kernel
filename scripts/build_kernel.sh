@@ -256,12 +256,18 @@ else
     prepare
   # KernelSU-Next's SELinux files include generated security/selinux headers;
   # the generic prepare target alone does not emit flask.h on this vendor 5.4 tree.
-  make O="$OUT_DIR" ARCH="$ARCH" LLVM=1 LLVM_IAS=1 LTO=thin DISABLE_WRAPPER=1 \
-    KCFLAGS="$VENDOR_WARN_FLAGS" CROSS_COMPILE="$CROSS_COMPILE" \
-    CROSS_COMPILE_COMPAT="${CROSS_COMPILE_COMPAT:-arm-linux-gnueabihf-}" \
-    security/selinux/flask.h
-  if [[ ! -s "$OUT_DIR/security/selinux/flask.h" ]]; then
-    echo "SELinux prepare did not generate $OUT_DIR/security/selinux/flask.h" >&2
+  test -x scripts/selinux/genheaders/genheaders
+  mkdir -p "$OUT_DIR/security/selinux"
+  scripts/selinux/genheaders/genheaders \
+    "$OUT_DIR/security/selinux/flask.h" \
+    "$OUT_DIR/security/selinux/av_permissions.h"
+  mkdir -p "$OUT_DIR/security/selinux/include"
+  cp -f "$OUT_DIR/security/selinux/flask.h" \
+    "$OUT_DIR/security/selinux/include/flask.h"
+  cp -f "$OUT_DIR/security/selinux/av_permissions.h" \
+    "$OUT_DIR/security/selinux/include/av_permissions.h"
+  if [[ ! -s "$OUT_DIR/security/selinux/include/flask.h" ]]; then
+    echo "SELinux prepare did not populate $OUT_DIR/security/selinux/include/flask.h" >&2
     exit 1
   fi
   make O="$OUT_DIR" ARCH="$ARCH" LLVM=1 LLVM_IAS=1 LTO=thin DISABLE_WRAPPER=1 \
