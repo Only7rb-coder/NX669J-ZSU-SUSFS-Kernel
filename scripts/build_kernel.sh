@@ -256,9 +256,9 @@ else
     prepare
   # KernelSU-Next's SELinux files include generated security/selinux headers;
   # the generic prepare target alone does not emit flask.h on this vendor 5.4 tree.
-  test -x scripts/selinux/genheaders/genheaders
+  test -x "$OUT_DIR/scripts/selinux/genheaders/genheaders"
   mkdir -p "$OUT_DIR/security/selinux"
-  scripts/selinux/genheaders/genheaders \
+  "$OUT_DIR/scripts/selinux/genheaders/genheaders" \
     "$OUT_DIR/security/selinux/flask.h" \
     "$OUT_DIR/security/selinux/av_permissions.h"
   mkdir -p "$OUT_DIR/security/selinux/include"
