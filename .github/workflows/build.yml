@@ -66,6 +66,7 @@ jobs:
           test -f scripts/port_susfs_fsnotify.py
           test -f scripts/port_susfs_54_defs.py
           test -f scripts/port_susfs_54_legacy.py
+          test -f scripts/port_susfs_54_v2_api.py
           test -f scripts/port_path_umount_54.py
           test -f scripts/port_susfs_try_umount.py
           test -f scripts/build_kernel.sh

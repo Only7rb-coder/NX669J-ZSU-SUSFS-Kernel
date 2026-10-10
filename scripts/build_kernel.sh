@@ -159,6 +159,8 @@ python3 "$ROOT_DIR/scripts/port_susfs_try_umount.py" \
   "$KERNEL_DIR/include/linux/susfs_def.h" \
   "$KERNEL_DIR/KernelSU-Next/kernel/supercalls.c" \
   "$KERNEL_DIR/KernelSU-Next/kernel/Kconfig" "$KERNEL_DIR/fs/namespace.c"
+python3 "$ROOT_DIR/scripts/port_susfs_54_v2_api.py" \
+  "$KERNEL_DIR/fs/namespace.c" "$KERNEL_DIR/fs/statfs.c"
 if [[ -f "$SUSFS_DIR/kernel_patches/fs/sus_su.c" ]]; then
   cp -f "$SUSFS_DIR/kernel_patches/fs/sus_su.c" fs/sus_su.c
 fi
@@ -252,6 +254,16 @@ else
     KCFLAGS="$VENDOR_WARN_FLAGS" CROSS_COMPILE="$CROSS_COMPILE" \
     CROSS_COMPILE_COMPAT="${CROSS_COMPILE_COMPAT:-arm-linux-gnueabihf-}" \
     prepare
+  # KernelSU-Next's SELinux files include generated security/selinux headers;
+  # the generic prepare target alone does not emit flask.h on this vendor 5.4 tree.
+  make O="$OUT_DIR" ARCH="$ARCH" LLVM=1 LLVM_IAS=1 LTO=thin DISABLE_WRAPPER=1 \
+    KCFLAGS="$VENDOR_WARN_FLAGS" CROSS_COMPILE="$CROSS_COMPILE" \
+    CROSS_COMPILE_COMPAT="${CROSS_COMPILE_COMPAT:-arm-linux-gnueabihf-}" \
+    security/selinux
+  if [[ ! -s "$OUT_DIR/security/selinux/include/flask.h" ]]; then
+    echo "SELinux prepare did not generate $OUT_DIR/security/selinux/include/flask.h" >&2
+    exit 1
+  fi
   make O="$OUT_DIR" ARCH="$ARCH" LLVM=1 LLVM_IAS=1 LTO=thin DISABLE_WRAPPER=1 \
     KCFLAGS="$VENDOR_WARN_FLAGS" CROSS_COMPILE="$CROSS_COMPILE" \
     CROSS_COMPILE_COMPAT="${CROSS_COMPILE_COMPAT:-arm-linux-gnueabihf-}" \
