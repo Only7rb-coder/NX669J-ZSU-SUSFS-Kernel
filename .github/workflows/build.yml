@@ -97,7 +97,7 @@ jobs:
 
       - name: Verify artifacts and integration markers
         run: |
-          set -euo pipefail
+          set -euxo pipefail
           test -s artifacts/Image
           unzip -t artifacts/NX669J-ZSU-SUSFS-AnyKernel3.zip
           unzip -p artifacts/NX669J-ZSU-SUSFS-AnyKernel3.zip anykernel.sh | grep -q 'split_boot'
