@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Restore the legacy SUSFS TRY_UMOUNT feature on the v2.2/5.4 hybrid tree."""
+"""Restore the legacy SUSFS TRY_UMOUNT feature on the v2.3/5.4 hybrid tree."""
 from __future__ import annotations
 
 import pathlib
@@ -328,7 +328,7 @@ def add_source(source: pathlib.Path) -> None:
 #endif
 '''
     text = once(text, feature_anchor, feature_block + feature_anchor, "enabled-feature TRY_UMOUNT anchor")
-    # The v2.2 implementation already contains the common SUSFS handlers.
+    # The v2.3 implementation already contains the common SUSFS handlers.
     # Add TRY_UMOUNT after them, at end of translation unit, so all common
     # helpers and the Linux 5.4 path_umount declaration are available.
     source.write_text(text + SOURCE_BLOCK)

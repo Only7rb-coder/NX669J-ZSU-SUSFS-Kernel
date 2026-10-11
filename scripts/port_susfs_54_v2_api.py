@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""Expose v2.2 SUSFS helper APIs using Linux 5.4 mount/statfs internals."""
+"""Expose v2.3 SUSFS helper APIs using Linux 5.4 mount/statfs internals."""
 from __future__ import annotations
 
 import pathlib
 import sys
 
-MOUNT_MARKER = "/* NX669J SUSFS v2.2 mount helper API. */"
-STATFS_MARKER = "/* NX669J SUSFS v2.2 statfs helper API. */"
+MOUNT_MARKER = "/* NX669J SUSFS v2.3 mount helper API. */"
+STATFS_MARKER = "/* NX669J SUSFS v2.3 statfs helper API. */"
 
 MOUNT_BLOCK = r'''
 
-/* NX669J SUSFS v2.2 mount helper API. */
+/* NX669J SUSFS v2.3 mount helper API. */
 #if defined(CONFIG_KSU_SUSFS_SUS_MOUNT) || defined(CONFIG_KSU_SUSFS_SUS_KSTAT)
 int susfs_get_non_sus_mnt_id_from_mnt(struct mount *orig_mnt)
 {
@@ -58,7 +58,7 @@ struct vfsmount *susfs_get_non_sus_vfsmnt_from_vfsmnt(struct vfsmount *vfsmnt)
 
 STATFS_BLOCK = r'''
 
-/* NX669J SUSFS v2.2 statfs helper API. */
+/* NX669J SUSFS v2.3 statfs helper API. */
 #ifdef CONFIG_KSU_SUSFS_SUS_KSTAT
 int statfs_by_dentry_wrapper(struct dentry *dentry, struct kstatfs *buf)
 {

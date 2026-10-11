@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Expose the legacy SUSFS symbols required by the NX669J Linux 5.4 patch.
 
-The v2.2 implementation keeps the same features but renamed several helpers
+The v2.3 implementation keeps the same features but renamed several helpers
 and changed the path/kstat data model.  This port adds a small compatibility
-index populated by the v2.2 command handlers and forwards the old 5.4 VFS
-hooks to that index or to the v2.2 open-redirect data.
+index populated by the v2.3 command handlers and forwards the old 5.4 VFS
+hooks to that index or to the v2.3 open-redirect data.
 """
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ STATE = r'''
 
 /* NX669J Linux 5.4 SUSFS legacy symbol bridge. */
 /* The 5.4 source patch still calls the v1.x helper names.  Keep a small
- * inode-keyed compatibility index fed by the v2.2 command handlers. */
+ * inode-keyed compatibility index fed by the v2.3 command handlers. */
 #ifdef CONFIG_KSU_SUSFS_SUS_PATH
 struct nx669j_susfs_path_compat_entry {
 	unsigned long target_ino;
@@ -195,7 +195,7 @@ out_srcu_read_unlock:
 #endif
 
 #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-/* v2.2 performs mount hiding through static keys and per-process state; the
+/* v2.3 performs mount hiding through static keys and per-process state; the
  * legacy 5.4 caller invokes this after umount only to reorder old mount IDs. */
 void susfs_reorder_mnt_id(void)
 {
@@ -228,7 +228,7 @@ def main() -> int:
     )
     text = replace_once(text, 'susfs_run_sus_path_loop();', 'susfs_run_sus_path_loop(0);', "path-loop call")
 
-    # Feed the legacy inode index at every v2.2 path-marking point.
+    # Feed the legacy inode index at every v2.3 path-marking point.
     text = replace_once(
         text,
         '\t\tset_bit(AS_FLAGS_SUS_PATH, &inode->i_mapping->flags);\n\t\tSUSFS_LOGI("flagged AS_FLAGS_SUS_PATH',
@@ -254,7 +254,7 @@ def main() -> int:
         "normal loop record",
     )
 
-    # Record v2.2 kstat command state after the command has validated it.
+    # Record v2.3 kstat command state after the command has validated it.
     text = replace_once(
         text,
         '\tif (!info.is_statically) {\n\t\tSUSFS_LOGI("CMD_SUSFS_ADD_SUS_KSTAT -> ret: %d\\n", info.err);',

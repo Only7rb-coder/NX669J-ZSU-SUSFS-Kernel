@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Adapt the v2.2 SUSFS fsnotify callback to Linux 5.4."""
+"""Adapt the v2.3 SUSFS fsnotify callback to Linux 5.4."""
 from __future__ import annotations
 
 import pathlib

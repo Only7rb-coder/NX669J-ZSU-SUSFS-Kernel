@@ -117,7 +117,7 @@ jobs:
           grep -Fq 'susfs_run_try_umount_for_current_mnt_ns();' kernel/KernelSU-Next/kernel/supercalls.c
           grep -Fq 'susfs_auto_add_try_umount_for_bind_mount(path);' kernel/fs/namespace.c
           grep -Fq 'config KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT' kernel/KernelSU-Next/kernel/Kconfig
-          grep -q '^#define SUSFS_VERSION "v2.2.0"$' kernel/include/linux/susfs.h
+          grep -q '^#define SUSFS_VERSION "v2.3.0"$' kernel/include/linux/susfs.h
           grep -q '^#define SUSFS_MAGIC 0xFAFAFAFA$' kernel/include/linux/susfs_def.h
           grep -q '^#define DEFAULT_SUS_MNT_ID 100000$' kernel/include/linux/susfs_def.h
           grep -q '^#define TASK_STRUCT_NON_ROOT_USER_APP_PROC BIT(24)$' kernel/include/linux/susfs_def.h

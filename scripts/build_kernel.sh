@@ -134,28 +134,28 @@ fi
 python3 "$ROOT_DIR/scripts/port_path_umount_54.py" \
   "$KERNEL_DIR/fs/namespace.c" "$KERNEL_DIR/fs/internal.h"
 
-# The kernel-5.4 branch supplies the source-tree patch, while the v2.2 API
+# The kernel-5.4 branch supplies the source-tree patch, while the v2.3 API
 # implementation comes from the Android 12/5.10 branch. KernelSU-Next
 # v3.1.0-legacy-susfs calls this v2.x API directly.
 for payload in fs/susfs.c include/linux/susfs.h include/linux/susfs_def.h; do
   if [[ ! -f "$SUSFS_API_DIR/kernel_patches/$payload" ]]; then
-    echo "Missing SUSFS v2.2 payload: $SUSFS_API_DIR/kernel_patches/$payload" >&2
+    echo "Missing SUSFS v2.3 payload: $SUSFS_API_DIR/kernel_patches/$payload" >&2
     exit 1
   fi
 done
 cp -f "$SUSFS_API_DIR/kernel_patches/fs/susfs.c" fs/susfs.c
 cp -f "$SUSFS_API_DIR/kernel_patches/include/linux/susfs.h" include/linux/susfs.h
 cp -f "$SUSFS_API_DIR/kernel_patches/include/linux/susfs_def.h" include/linux/susfs_def.h
-# The v2.2 payload is authored for a 5.10 fsnotify_ops layout. NX669J's
+# The v2.3 payload is authored for a 5.10 fsnotify_ops layout. NX669J's
 # vendor kernel is 5.4, where the callback field is handle_event and uses
 # the older eight-argument ABI.
 python3 "$ROOT_DIR/scripts/port_susfs_54_defs.py" "$KERNEL_DIR/include/linux/susfs_def.h"
 python3 "$ROOT_DIR/scripts/port_susfs_fsnotify.py" "$KERNEL_DIR/fs/susfs.c"
 # Export the legacy helper names still referenced by the kernel-5.4 patch and
-# by KernelSU-Next's setuid/VFS hooks while retaining v2.2 command handling.
+# by KernelSU-Next's setuid/VFS hooks while retaining v2.3 command handling.
 python3 "$ROOT_DIR/scripts/port_susfs_54_legacy.py" "$KERNEL_DIR/fs/susfs.c"
 # Restore the deprecated SUSFS TRY_UMOUNT ABI and automatic bind-mount path
-# registration on top of the v2.2 implementation for this Linux 5.4 device.
+# registration on top of the v2.3 implementation for this Linux 5.4 device.
 python3 "$ROOT_DIR/scripts/port_susfs_try_umount.py" \
   "$KERNEL_DIR/fs/susfs.c" "$KERNEL_DIR/include/linux/susfs.h" \
   "$KERNEL_DIR/include/linux/susfs_def.h" \
@@ -228,7 +228,7 @@ ensure_config CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG y
 ensure_config CONFIG_KSU_SUSFS_OPEN_REDIRECT y
 ensure_config CONFIG_KSU_SUSFS_SUS_MAP y
 # Restore the legacy TRY_UMOUNT feature and automatic bind-mount registration;
-# port_susfs_try_umount.py supplies the missing v2.2 implementation and routes.
+# port_susfs_try_umount.py supplies the missing v2.3 implementation and routes.
 ensure_config CONFIG_KSU_SUSFS_TRY_UMOUNT y
 ensure_config CONFIG_KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT y
 # The device is non-GKI and uses /proc/cmdline; port_cmdline_susfs.py provides

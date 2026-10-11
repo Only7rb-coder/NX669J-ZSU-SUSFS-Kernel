@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Add Linux 5.4 compatibility definitions to the v2.2 SUSFS header."""
+"""Add Linux 5.4 compatibility definitions to the v2.3 SUSFS header."""
 from __future__ import annotations
 
 import pathlib
@@ -35,7 +35,7 @@ BLOCK = """
 #ifndef TASK_STRUCT_NON_ROOT_USER_APP_PROC
 #define TASK_STRUCT_NON_ROOT_USER_APP_PROC BIT(24)
 #endif
-/* v2.2 removed these deprecated v1.x command handlers. KernelSU-Next's
+/* v2.3 removed these deprecated v1.x command handlers. KernelSU-Next's
  * legacy-susfs supercalls file still references them unconditionally. */
 #ifndef KSU_SUSFS_54_DEPRECATED_API
 #define KSU_SUSFS_54_DEPRECATED_API
