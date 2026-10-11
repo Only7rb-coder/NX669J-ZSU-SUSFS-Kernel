@@ -50,6 +50,8 @@ if [[ ! -f "$KSU_KBUILD" ]]; then
   echo "KernelSU-Next Kbuild was not integrated at $KSU_KBUILD" >&2
   exit 1
 fi
+python3 "$ROOT_DIR/scripts/port_susfs_ksu_domains.py" \
+  "$KSU_ROOT/selinux/selinux.c"
 
 # Restrict manager authorization to normal/spoofed ZSU APKs signed by the ZSU
 # certificate. Newer builds use a comma-separated KSU_NEXT_MANAGER_LIST; the

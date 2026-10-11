@@ -67,9 +67,11 @@ jobs:
           test -f scripts/port_susfs_54_defs.py
           test -f scripts/port_susfs_54_legacy.py
           test -f scripts/port_susfs_54_v2_api.py
+          test -f scripts/port_susfs_ksu_domains.py
           test -f scripts/port_path_umount_54.py
           test -f scripts/port_susfs_try_umount.py
           test -f scripts/build_kernel.sh
+          grep -q 'port_susfs_ksu_domains.py' scripts/build_kernel.sh
 
       - name: Build kernel and integration artifacts
         env:
@@ -132,6 +134,8 @@ jobs:
           ! grep -R -nE '^(<<<<<<<|=======|>>>>>>>)' kernel/drivers/rtc/rtc-pm8xxx.c
           grep -R -q 'KSU_NEXT_MANAGER_SIZE\|KSU_NEXT_MANAGER_HASH\|KSU_NEXT_MANAGER_LIST' kernel/KernelSU-Next/kernel
           grep -R -q 'ba1159a5819dec96cdcb2498bef73170b0ba1735c12139bde1b7677bf7c5c2ab' kernel/KernelSU-Next/kernel
+          grep -Fq 'bool susfs_is_current_ksu_domain(void)' kernel/KernelSU-Next/kernel/selinux/selinux.c
+          grep -Fq 'bool susfs_is_current_zygote_domain(void)' kernel/KernelSU-Next/kernel/selinux/selinux.c
           printf 'Image bytes: '
           stat -c '%s' artifacts/Image
           printf 'AnyKernel bytes: '
