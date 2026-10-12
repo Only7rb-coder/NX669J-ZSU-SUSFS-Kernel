@@ -55,8 +55,10 @@ jobs:
       - name: Validate checked-in device contract
         run: |
           set -euo pipefail
+          source config/device.env
           test "$(grep '^KERNEL_DEFCONFIG=' config/device.env | cut -d= -f2-)" = "vendor/lahaina-qgki_defconfig"
           test "$(grep '^NUBIA_TARGET_PRODUCT=' config/device.env | cut -d= -f2-)" = "NX669J"
+          test "$KERNEL_RELEASE" = "5.4.147-qgki-gd9147d4b1b39"
           test "$(grep '^SUSFS_REF=' config/device.env | cut -d= -f2-)" = "kernel-5.4"
           test "$(grep '^SUSFS_API_REF=' config/device.env | cut -d= -f2-)" = "gki-android12-5.10"
           test "$(grep '^KSU_REF=' config/device.env | cut -d= -f2-)" = "v3.1.0-legacy"
@@ -98,11 +100,16 @@ jobs:
       - name: Verify artifacts and integration markers
         run: |
           set -euxo pipefail
+          source config/device.env
           test -s artifacts/Image
+          test "$(cat artifacts/kernel.release)" = "$KERNEL_RELEASE"
+          strings artifacts/Image | grep -F "Linux version $KERNEL_RELEASE " >/dev/null
           unzip -t artifacts/NX669J-ZSU-SUSFS-AnyKernel3.zip
           unzip -p artifacts/NX669J-ZSU-SUSFS-AnyKernel3.zip anykernel.sh | grep -q 'split_boot'
           unzip -p artifacts/NX669J-ZSU-SUSFS-AnyKernel3.zip anykernel.sh | grep -q 'flash_boot'
           grep -q '^CONFIG_KSU=y$' kernel/arch/arm64/configs/vendor/lahaina-qgki_defconfig
+          grep -Fq "CONFIG_LOCALVERSION=\"$KERNEL_LOCALVERSION\"" kernel/arch/arm64/configs/vendor/lahaina-qgki_defconfig
+          grep -q '^CONFIG_LOCALVERSION_AUTO=n$' kernel/arch/arm64/configs/vendor/lahaina-qgki_defconfig
           grep -q '^CONFIG_KSU_SUSFS=y$' kernel/arch/arm64/configs/vendor/lahaina-qgki_defconfig
           grep -q '^CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG=y$' kernel/arch/arm64/configs/vendor/lahaina-qgki_defconfig
           grep -q '^CONFIG_KSU_SUSFS_TRY_UMOUNT=y$' kernel/arch/arm64/configs/vendor/lahaina-qgki_defconfig

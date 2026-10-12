@@ -12,9 +12,12 @@ The target device information currently recorded for this project is:
 | Android | 12 |
 | SoC | Qualcomm Snapdragon 888 / Lahaina |
 | Stock kernel family | 5.4.147 QGKI |
+| Stock kernel release | `5.4.147-qgki-gd9147d4b1b39` |
 | Target defconfig | `vendor/lahaina-qgki_defconfig` |
 | Kernel image | `arch/arm64/boot/Image` |
 | Boot layout reference | Recovery-as-boot / header v3 device-tree configuration |
+
+The stock boot image reports `5.4.147-qgki-gd9147d4b1b39`, and the target defconfig enables `CONFIG_MODVERSIONS`. The build therefore pins `CONFIG_LOCALVERSION` to that stock release and disables automatic Git/`-dirty` suffixes; CI checks both `kernel.release` and the release string embedded in `Image`. This aligns module vermagic only—it does not prove all vendor symbol CRCs match, bypass AVB, or replace exact-device boot testing.
 
 The kernel source is cloned during CI from [`tangalbert919/android_kernel_nubia_sm8350`](https://github.com/tangalbert919/android_kernel_nubia_sm8350), branch `rebase-17200-a12`. Because this device tree is **5.4.147 rather than GKI 5.10**, the workflow uses the `kernel-5.4` branch from [`simonpunk/susfs4ksu`](https://gitlab.com/simonpunk/susfs4ksu) and applies `50_add_susfs_in_kernel-5.4.patch` with a bounded context fuzz level. The small downstream differences are handled explicitly: `fs/proc/fd.c` receives a reviewed mount-hiding port, and the non-GKI `fs/proc/cmdline.c` receives the corresponding spoofing hook because this source has no `fs/proc/bootconfig.c`. KernelSU-Next is pinned to the upstream [`v3.1.0-legacy-susfs`](https://github.com/KernelSU-Next/KernelSU-Next/tree/v3.1.0-legacy-susfs) tag. This legacy SUSFS tag is used intentionally: the moving `dev-susfs` head currently assumes newer SELinux and scheduler internals and does not compile against this vendor 5.4.147 tree.
 

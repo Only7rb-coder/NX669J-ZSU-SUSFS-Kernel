@@ -21,6 +21,9 @@ export CC="${CC:-clang}"
 export HOSTCC="${HOSTCC:-clang}"
 export HOSTLD="${HOSTLD:-ld.lld}"
 export HOSTAR="${HOSTAR:-llvm-ar}"
+# Match the stock NX669J UTS_RELEASE; CONFIG_MODVERSIONS makes module vermagic matter.
+# An explicitly empty LOCALVERSION prevents setlocalversion adding a Git hash or -dirty.
+export LOCALVERSION=""
 export TARGET_NUBIA_SSD="${TARGET_NUBIA_SSD:-false}"
 export NUBIA_TARGET_PRODUCT="${NUBIA_TARGET_PRODUCT:-NX669J}"
 export TARGET_BUILD_VARIANT="${TARGET_BUILD_VARIANT:-user}"
@@ -214,6 +217,8 @@ ensure_config() {
   printf '%s=%s\n' "$key" "$value" >> "$DEFCONFIG_PATH"
 }
 
+ensure_config CONFIG_LOCALVERSION "\"${KERNEL_LOCALVERSION}\""
+ensure_config CONFIG_LOCALVERSION_AUTO n
 ensure_config CONFIG_KSU y
 ensure_config CONFIG_TMPFS_XATTR y
 ensure_config CONFIG_TMPFS_POSIX_ACL y
@@ -288,8 +293,31 @@ if [[ ! -s "$IMAGE" ]]; then
   exit 1
 fi
 
+KERNEL_RELEASE_FILE="$OUT_DIR/include/config/kernel.release"
+if [[ ! -s "$KERNEL_RELEASE_FILE" ]]; then
+  KERNEL_RELEASE_FILE="$(find "$KERNEL_DIR/out" -path '*/include/config/kernel.release' -type f -print -quit 2>/dev/null || true)"
+fi
+if [[ ! -s "$KERNEL_RELEASE_FILE" ]]; then
+  echo "Kernel build did not produce include/config/kernel.release" >&2
+  exit 1
+fi
+ACTUAL_KERNEL_RELEASE="$(cat "$KERNEL_RELEASE_FILE")"
+if [[ "$ACTUAL_KERNEL_RELEASE" != "$KERNEL_RELEASE" ]]; then
+  echo "Kernel release mismatch: expected $KERNEL_RELEASE, got $ACTUAL_KERNEL_RELEASE" >&2
+  exit 1
+fi
+python3 - "$IMAGE" "$KERNEL_RELEASE" <<'PY'
+import sys
+image, release = sys.argv[1:]
+needle = f"Linux version {release} ".encode()
+with open(image, "rb") as f:
+    if needle not in f.read():
+        raise SystemExit(f"Image does not contain expected release string: {release}")
+PY
+
 mkdir -p "$ROOT_DIR/artifacts"
 cp "$IMAGE" "$ROOT_DIR/artifacts/Image"
+printf '%s\n' "$ACTUAL_KERNEL_RELEASE" > "$ROOT_DIR/artifacts/kernel.release"
 if [[ -f "$OUT_DIR/vmlinux" ]]; then cp "$OUT_DIR/vmlinux" "$ROOT_DIR/artifacts/vmlinux"; fi
 if compgen -G "$OUT_DIR/**/*.ko" >/dev/null 2>&1; then
   find "$OUT_DIR" -name '*.ko' -type f -exec cp --parents {} "$ROOT_DIR/artifacts/" \;
